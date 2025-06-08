@@ -80,7 +80,7 @@ void loop() {
 void openLock() {
   digitalWrite(RELAY_PIN, HIGH);
   blinkLED(1, 100);
-  delay(5000);  // 10 seconds
+  delay(5000);  // 5 seconds
   digitalWrite(RELAY_PIN, LOW);
 }
 
