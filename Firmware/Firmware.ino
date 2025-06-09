@@ -8,9 +8,10 @@
 #define RELAY_PIN D1
 #define LED_PIN D2
 
-const char* ssid = "YOUR_SSID";
-const char* password = "YOUR_WIFI_PASSWORD";
-const char* serverUrl = "http://YOUR_RPI_IP:5000/check_card";
+const char* ssid = "SSID";
+const char* password = "PASSWD";
+
+const char* serverUrl ="http://IPADDR:5000/check_card";
 
 MFRC522 mfrc522(SS_PIN, RST_PIN);
 WiFiClient client;
@@ -22,7 +23,7 @@ void setup() {
 
   pinMode(RELAY_PIN, OUTPUT);
   pinMode(LED_PIN, OUTPUT);
-  digitalWrite(RELAY_PIN, LOW);
+  digitalWrite(RELAY_PIN, HIGH);
   digitalWrite(LED_PIN, LOW);
 
   WiFi.begin(ssid, password);
@@ -35,6 +36,7 @@ void setup() {
 }
 
 void loop() {
+  digitalWrite(LED_PIN,HIGH); //device is ready to read data
   if (!mfrc522.PICC_IsNewCardPresent() || !mfrc522.PICC_ReadCardSerial()) {
     return;
   }
@@ -53,7 +55,9 @@ void loop() {
     http.addHeader("Content-Type", "application/json");
 
     String postData = "{\"card_uid\":\"" + cardUID + "\"}";
+    Serial.println(postData);
     int httpResponseCode = http.POST(postData);
+    Serial.println(httpResponseCode);
 
     if (httpResponseCode > 0) {
       String payload = http.getString();
@@ -78,14 +82,28 @@ void loop() {
 }
 
 void openLock() {
-  digitalWrite(RELAY_PIN, HIGH);
-  blinkLED(1, 100);
-  delay(5000);  // 5 seconds
   digitalWrite(RELAY_PIN, LOW);
+  notifyDoorState("open");
+  blinkLED(1, 100);
+  delay(3000);  // 3 seconds
+  digitalWrite(RELAY_PIN, HIGH);
+  notifyDoorState("closed");
 }
 
 void denyAccess() {
-  blinkLED(3, 100);
+  blinkLED(10, 100);
+}
+
+void notifyDoorState(const String& state) {
+  if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+    http.begin(client, "http://IPADDR:5000/door_state");
+    http.addHeader("Content-Type", "application/json");
+    String body = "{\"state\": \"" + state + "\"}";
+    int code = http.POST(body);
+    Serial.println(code);
+    http.end();
+  }
 }
 
 void blinkLED(int times, int duration) {
